@@ -154,3 +154,9 @@ else:
 
     cs.columns=["County","Tracts","Avg DRI","Critical","High","Avg Rent Burden","Gentrification Flags"]
     st.dataframe(cs, use_container_width=True, hide_index=True)
+
+# TEMP DEBUG — REMOVE AFTER
+st.write("=== DEBUG COLUMNS ===")
+st.write("Table:", df.columns.tolist())
+st.write("Sample rows:", df[["geoid", "countyname", "median_rent"]].head() if "countyname" in df.columns else "NO countyname!")
+st.stop()  # Halts here — check output
