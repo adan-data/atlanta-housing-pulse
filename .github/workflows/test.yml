@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:    { branches: [main, dev] }
+  pull_request: { branches: [main] }
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.10" }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      - run: pip install -r requirements.txt pytest pytest-cov
+      - name: Seed test database
+        run: |
+          python -c "
+          import sqlite3, pandas as pd, numpy as np
+          rng = np.random.default_rng(42); n = 120
+          conn = sqlite3.connect('housing_pulse.db')
+          pd.DataFrame({
+              'geo_id':[f'13121{i:06d}' for i in range(n)],
+              'county_name':['Fulton']*n, 'NAME':[f'Tract {i}' for i in range(n)],
+              'total_renter_hh':rng.integers(60,400,n),
+              'severely_burdened_hh':rng.integers(5,120,n),
+              'median_income':rng.integers(24000,110000,n).astype(float),
+              'median_rent':rng.integers(750,2400,n).astype(float),
+              'vacant_units':rng.integers(2,80,n), 'total_units':rng.integers(80,500,n),
+              'white_pop':rng.integers(20,350,n), 'total_pop':rng.integers(200,1200,n),
+              'rent_burden_pct':rng.uniform(0.05,0.65,n),
+              'vacancy_rate':rng.uniform(0.01,0.18,n),
+              'rent_to_income_ratio':rng.uniform(0.18,0.80,n),
+              'white_share':rng.uniform(0.05,0.85,n),
+              'data_year':[2022]*n, 'pulled_at':['2026-01-01']*n,
+          }).to_sql('census_tracts',conn,if_exists='replace',index=False)
+          conn.close(); print('Test DB seeded.')
+          "
+      - run: python src/features.py
+      - run: pytest tests/ -v --cov=src --cov-report=term-missing

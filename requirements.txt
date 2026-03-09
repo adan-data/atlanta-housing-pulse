@@ -1,0 +1,12 @@
+pandas
+numpy
+requests
+scikit-learn
+prophet
+streamlit
+plotly
+scipy
+python-dotenv
+fpdf2
+pytest
+pytest-cov

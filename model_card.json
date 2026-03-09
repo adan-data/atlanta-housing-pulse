@@ -1,0 +1,76 @@
+{
+  "model_name": "Atlanta Housing Pulse \u2014 Displacement Risk Index & GBM Classifier",
+  "version": "1.0.0",
+  "date": "2026-01-15",
+  "description": "Composite index and gradient boosting classifier for housing displacement risk at census tract level in the Atlanta metro area.",
+  "primary_outputs": {
+    "displacement_risk_index": "Weighted composite score [0, 1]",
+    "risk_tier": "Categorical: Low / Moderate / High / Critical",
+    "gentrification_pressure_flag": "Binary: 1 = structural preconditions present",
+    "rent_forecast": "18-month Prophet forecast with 90% CI"
+  },
+  "training_data": {
+    "source": "ACS 5-Year Estimates 2022",
+    "geography": "Census tracts \u2014 Fulton, DeKalb, Gwinnett, Cobb, Clayton counties, Georgia",
+    "n_tracts": 520,
+    "suppression_handling": "Census placeholder -666666666 coerced to NaN; affected tracts retained in raw table but excluded from DRI scoring"
+  },
+  "dri_weights": {
+    "rent_burden_pct": 0.35,
+    "rent_to_income_ratio": 0.25,
+    "low_vacancy_score": 0.2,
+    "low_income_score": 0.2
+  },
+  "risk_tier_thresholds": {
+    "Low": "0.00 \u2013 0.30",
+    "Moderate": "0.30 \u2013 0.50",
+    "High": "0.50 \u2013 0.70",
+    "Critical": "0.70 \u2013 1.00"
+  },
+  "gbm_hyperparameters": {
+    "n_estimators": 200,
+    "learning_rate": 0.05,
+    "max_depth": 4,
+    "subsample": 0.8,
+    "min_samples_leaf": 5,
+    "random_state": 42
+  },
+  "gbm_evaluation": {
+    "method": "5-fold stratified cross-validation",
+    "metric": "accuracy",
+    "note": "GBM is used for DRI validation and feature importance, not as primary risk output"
+  },
+  "prophet_config": {
+    "seasonality_mode": "multiplicative",
+    "changepoint_prior_scale": 0.3,
+    "interval_width": 0.9,
+    "forecast_horizon_months": 18,
+    "actionable_horizon_months": 6
+  },
+  "drift_monitoring": {
+    "method": "Population Stability Index (PSI)",
+    "thresholds": {
+      "STABLE": "< 0.10",
+      "MONITOR": "0.10 \u2013 0.25",
+      "RETRAIN": "> 0.25"
+    },
+    "reference": "SR 11-7 model validation framework",
+    "features_monitored": [
+      "rent_burden_pct",
+      "rent_to_income_ratio",
+      "vacancy_rate",
+      "median_income",
+      "median_rent",
+      "displacement_risk_index"
+    ]
+  },
+  "known_limitations": [
+    "ACS 5-Year data lags current conditions by 2-3 years",
+    "DRI weights are defensible but alternative weighting schemes produce modestly different rankings",
+    "Tract-level averages may mask individual household distress in lower-risk tracts",
+    "Forecast assumes historical patterns continue; structural policy changes not captured",
+    "Gentrification flag identifies preconditions, not confirmed gentrification events"
+  ],
+  "intended_use": "Housing resource allocation, proactive outreach targeting, policy prioritization",
+  "out_of_scope_use": "Individual household eligibility decisions, real-time eviction risk prediction"
+}
