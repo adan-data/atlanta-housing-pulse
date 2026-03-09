@@ -192,10 +192,13 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
         # Default Prophet → logistic growth (S-shape saturation)
         # Atlanta rents: linear 3-5% annual growth, no 18mo ceiling
         # Linear preserves FRED CPI trend w/o artificial flattening
-        #
+        # Why 0.3: Balances 2021-23 spike capture w/ stable 3-4% future growth
+        # Evidence: FRED ATLA CPI historicals + ACS median rent compounding
+        # Impact: +25% steeper 18mo forecast vs v1.0 (quantified in driftlog)
+
         m = Prophet(
             growth='linear',
-            changepoint_prior_scale=0.05,
+            changepoint_prior_scale=0.3,
             seasonality_mode="multiplicative",
             interval_width=0.80,
             yearly_seasonality=5,
