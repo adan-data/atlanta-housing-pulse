@@ -5,7 +5,8 @@
 Tract-level housing displacement risk system for the Atlanta metro — Census + FRED data pipeline, engineered risk index, and Prophet rent forecasting across 500+ census tracts in Fulton, DeKalb, Gwinnett, Cobb, and Clayton counties.
 
 
-![alt text](image.png)
+![County Summary](docs/images/county_summary.png)
+
 
 
 
