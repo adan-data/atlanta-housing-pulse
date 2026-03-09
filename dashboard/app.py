@@ -145,12 +145,12 @@ else:
     except Exception: st.info("Run monitor.py to populate drift log.")
 
     st.subheader("County Summary")
-    cs = df.groupby("county").agg(
-        Tracts=("geo_id","count"), Avg_DRI=("displacement_risk_index","mean"),
-        Critical=("risk_tier",lambda x:(x=="Critical").sum()),
-        High=("risk_tier",lambda x:(x=="High").sum()),
-        Avg_Burden=("rent_burden_pct","mean"),
-        Gentrif=("gentrification_pressure_flag","sum"),
+    cs = df.groupby("countyname").agg(  # From census_tracts
+        Tracts=("geoid", "count"),      # From census_tracts (not geo_id)
+        Avg_DRI=("displacement_risk_index", "mean"),
+        Med_Rent=("median_rent", "mean"),  # snake_case!
+        Gentrif=("gentrif_pressure_flag", "sum"),  # snake_case!
     ).round(3).reset_index()
+
     cs.columns=["County","Tracts","Avg DRI","Critical","High","Avg Rent Burden","Gentrification Flags"]
     st.dataframe(cs, use_container_width=True, hide_index=True)
