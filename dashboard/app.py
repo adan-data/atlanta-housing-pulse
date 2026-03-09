@@ -146,9 +146,12 @@ else:
 
     st.subheader("County Summary")
     # Line 148: Safe county summary (handles ANY column names)
-df_safe = df.copy()
-if 'countyname' not in df_safe.columns:
-    df_safe['countyname'] = df_safe.get('county', 'Unknown').fillna('Unknown')
+    df_safe = df.copy()
+    df_safe['countyname'] = df_safe.get('countyname', df_safe.get('county', 'Unknown')).fillna('Unknown')
+    df_safe['geoid'] = df_safe.get('geoid', df_safe.get('geo_id', 0)).astype(str)
+    df_safe['gentrif_pressure_flag'] = df_safe.get('gentrif_pressure_flag', 0).fillna(0)
+    df_safe['displacement_risk_index'] = df_safe.get('displacement_risk_index', 0).fillna(0)
+    df_safe['median_rent'] = df_safe.get('median_rent', 0).fillna(0)
 
 cs = df_safe.groupby('countyname').agg(
     Tracts=('geoid', 'count'),
@@ -157,3 +160,4 @@ cs = df_safe.groupby('countyname').agg(
     Gentrif=('gentrif_pressure_flag', 'sum')
 ).round(3).reset_index()
 
+st.dataframe(cs, use_container_width=True)
