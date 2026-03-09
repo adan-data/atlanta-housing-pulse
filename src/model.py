@@ -30,7 +30,7 @@ the FRED series while anchoring the y-axis to meaningful dollar values
 that match what the Census reports.
 
 Scaling formula:
-  scaled_y = cpi_value / cpi_latest * acs_median_rent_2024
+    scaled_y = cpi_value / cpi_latest * acs_median_rent_2024
 """
 import os, warnings, logging
 import numpy as np, pandas as pd, sqlite3
@@ -48,7 +48,7 @@ DB_PATH  = "housing_pulse.db"
 FEATURES = [
     "rent_burden_pct", "rent_to_income_ratio", "vacancy_rate",
     "median_income", "median_rent", "low_vacancy_score",
-    "low_income_score", "gentrification_pressure_flag",
+    "low_income_score", "gentrif_pressure_flag",  # FIX: was "gentrification_pressure_flag" — column doesn't exist in DB
 ]
 
 try:
@@ -78,8 +78,8 @@ def train_risk_classifier(df):
     )
     clf.fit(X_tr, y_tr)
 
-    cv       = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    scores   = cross_val_score(clf, X, y, cv=cv, scoring="accuracy")
+    cv     = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    scores = cross_val_score(clf, X, y, cv=cv, scoring="accuracy")
     test_acc = accuracy_score(y_te, clf.predict(X_te))
     logging.info("CV Acc: %.3f ± %.3f | Test: %.3f", scores.mean(), scores.std(), test_acc)
     logging.info("%s", classification_report(y_te, clf.predict(X_te), target_names=le.classes_))
@@ -140,7 +140,7 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
     df   = pd.DataFrame()
 
     candidates = [
-        ("fred_rent_cpi_atlanta",     "rent_cpi_atlanta"),
+        ("fred_rent_cpi_atlanta",    "rent_cpi_atlanta"),
         ("fred_unemployment_atlanta", "unemployment_atlanta"),
     ]
 
@@ -168,7 +168,6 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
             "date": dates,
             "y":    1350 + np.arange(36) * 14.5 + rng.normal(0, 30, 36),
         })
-        # Synthetic data is already in dollars — skip CPI rescaling
         df["ds"] = pd.to_datetime(df["date"])
         df = df[["ds", "y"]].dropna().sort_values("ds")
     else:
@@ -176,46 +175,33 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
         df = df[["ds", "y"]].dropna().sort_values("ds")
 
         # Rescale CPI index → dollar rents
-        # Formula: scaled = cpi_value / cpi_latest * acs_anchor
-        # This preserves trend shape while anchoring to real rent dollars
         cpi_latest = df["y"].iloc[-1]
         acs_anchor = get_acs_rent_anchor(db_path)
-        df["y"]    = (df["y"] / cpi_latest * acs_anchor).round(2)
+        df["y"] = (df["y"] / cpi_latest * acs_anchor).round(2)
         logging.info(
             "CPI rescaled: %.2f (latest index) → $%.0f (ACS anchor) — "
             "series range: $%.0f–$%.0f",
             cpi_latest, acs_anchor, df["y"].min(), df["y"].max()
         )
 
-        # FIXED S-CURVE FORECAST (Mar 2026)
-        # -------------------------------
-        # Default Prophet → logistic growth (S-shape saturation)
-        # Atlanta rents: linear 3-5% annual growth, no 18mo ceiling
-        # Linear preserves FRED CPI trend w/o artificial flattening
-        # Why 0.3: Balances 2021-23 spike capture w/ stable 3-4% future growth
-        # Evidence: FRED ATLA CPI historicals + ACS median rent compounding
-        # Impact: +25% steeper 18mo forecast vs v1.0 (quantified in driftlog)
+    m = Prophet(
+        growth="linear",
+        changepoint_prior_scale=0.3,
+        seasonality_mode="multiplicative",
+        interval_width=0.80,
+        yearly_seasonality=5,
+        weekly_seasonality=False,
+        daily_seasonality=False,
+    )
+    m.fit(df)
 
-        m = Prophet(
-            growth='linear',
-            changepoint_prior_scale=0.3,
-            seasonality_mode="multiplicative",
-            interval_width=0.80,
-            yearly_seasonality=5,
-            weekly_seasonality=False,
-            daily_seasonality=False,
-        )
-        m.fit(df)
+    future   = m.make_future_dataframe(periods=periods, freq="MS")
+    forecast = m.predict(future)
 
-        future = m.make_future_dataframe(periods=periods, freq="MS")
-        forecast = m.predict(future)
-
-        out = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(periods).copy()
-        out.columns = ["date", "forecast", "lower_90", "upper_90"]
-        out["date"] = out["date"].dt.strftime("%Y-%m-%d")
-        return out, m
-
-
+    out = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(periods).copy()
+    out.columns = ["date", "forecast", "lower_90", "upper_90"]
+    out["date"] = out["date"].dt.strftime("%Y-%m-%d")
+    return out, m
 
 
 # ---------------------------------------------------------------------------

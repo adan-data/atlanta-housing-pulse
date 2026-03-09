@@ -7,18 +7,18 @@ from datetime import datetime
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
 CENSUS_API_KEY = "YOUR_CENSUS_API_KEY"
 FRED_API_KEY   = "YOUR_FRED_API_KEY"
 
 ATLANTA_COUNTIES = {
-    "Fulton":  "121",
-    "DeKalb":  "089",
-    "Gwinnett":"135",
-    "Cobb":    "067",
-    "Clayton": "063"
+    "Fulton":   "121",
+    "DeKalb":   "089",
+    "Gwinnett": "135",
+    "Cobb":     "067",
+    "Clayton":  "063",
 }
 
 STATE_FIPS = "13"
@@ -28,8 +28,9 @@ def get_census_data(year=2022):
     variables = [
         "B25070_001E", "B25070_010E", "B19013_001E",
         "B25058_001E", "B25002_003E", "B25002_001E",
-        "B03002_003E", "B03002_001E", "NAME"
+        "B03002_003E", "B03002_001E", "NAME",
     ]
+
     all_data = []
     for county_name, county_fips in ATLANTA_COUNTIES.items():
         url = (
@@ -43,7 +44,7 @@ def get_census_data(year=2022):
             r = requests.get(url, timeout=30)
             r.raise_for_status()
             data = r.json()
-            df = pd.DataFrame(data[1:], columns=data[0])
+            df   = pd.DataFrame(data[1:], columns=data[0])
             df["county_name"] = county_name
             all_data.append(df)
             logging.info(f"Pulled {len(data)-1} tracts for {county_name} County")
@@ -60,7 +61,7 @@ def clean_census_data(df, year=2022):
     numeric_cols = [
         "B25070_001E", "B25070_010E", "B19013_001E",
         "B25058_001E", "B25002_003E", "B25002_001E",
-        "B03002_003E", "B03002_001E"
+        "B03002_003E", "B03002_001E",
     ]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
@@ -73,7 +74,7 @@ def clean_census_data(df, year=2022):
         "B25002_003E": "vacant_units",
         "B25002_001E": "total_units",
         "B03002_003E": "white_pop",
-        "B03002_001E": "total_pop"
+        "B03002_001E": "total_pop",
     })
     df["rent_burden_pct"]      = (df["severely_burdened_hh"] / df["total_renter_hh"]).round(4)
     df["vacancy_rate"]         = (df["vacant_units"] / df["total_units"]).round(4)
@@ -90,8 +91,9 @@ def get_fred_data():
         "ATLA113LBSA":  "labor_force_atlanta",
         "ATLA113URN":   "unemployment_rate_atlanta",
         "CUURA319SAH":  "cpi_housing_southeast",
-        "MORTGAGE30US": "mortgage_rate_30yr"
+        "MORTGAGE30US": "mortgage_rate_30yr",
     }
+
     fred_data = {}
     for series_id, label in series_map.items():
         url = (
@@ -100,12 +102,12 @@ def get_fred_data():
             f"&api_key={FRED_API_KEY}&file_type=json"
         )
         try:
-            r = requests.get(url, timeout=30)
+            r   = requests.get(url, timeout=30)
             r.raise_for_status()
             obs = r.json()["observations"]
             df  = pd.DataFrame(obs)[["date", "value"]]
             df["value"] = pd.to_numeric(df["value"], errors="coerce")
-            df = df.dropna()
+            df  = df.dropna()
             df.columns = ["date", label]
             fred_data[label] = df
             time.sleep(0.3)
