@@ -7,11 +7,6 @@ Tract-level housing displacement risk system for the Atlanta metro — Census + 
 
 ![County Summary](docs/images/county_summary.png)
 
-
-
-
-
-
 ---
 
 ## What this system does
