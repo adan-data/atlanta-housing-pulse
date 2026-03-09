@@ -59,7 +59,7 @@ if view == "Community Overview":
     c1.metric("Critical Tracts", int((df["risk_tier"]=="Critical").sum()))
     c2.metric("High Risk Tracts", int((df["risk_tier"]=="High").sum()))
     c3.metric("Avg Rent Burden", f"{df['rent_burden_pct'].mean():.1%}")
-    c4.metric("Gentrification Flags", int(df.get("gentrification_pressure_flag", pd.Series(0)).sum()))
+    c4.metric("Gentrification Flags", int(df.get("gentrif_pressure_flag", pd.Series(0)).sum()))
 
 
     st.subheader("Income vs. Rent by Tract")
