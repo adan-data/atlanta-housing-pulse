@@ -4,6 +4,13 @@
 
 Tract-level housing displacement risk system for the Atlanta metro — Census + FRED data pipeline, engineered risk index, and Prophet rent forecasting across 500+ census tracts in Fulton, DeKalb, Gwinnett, Cobb, and Clayton counties.
 
+
+![alt text](image.png)
+
+
+
+
+
 ---
 
 ## What this system does
@@ -16,17 +23,22 @@ The system runs an end‑to‑end pipeline: pull → clean → engineer → scor
 
 ## Key findings (2022 ACS)
 
-| County  | Avg DRI | Critical Tracts | Avg Rent Burden |
-|---------|---------|-----------------|-----------------|
-| Clayton | Highest | Most per tract  | ~38%            |
-| DeKalb  | High    | Significant     | ~31%            |
-| Fulton  | Mixed   | Wide spread     | ~28%            |
-| Gwinnett| Moderate| Fewer           | ~24%            |
-| Cobb    | Lowest  | Fewest          | ~22%            |
+> **DRI scores range from 0 to 1. Higher = greater displacement risk.**
 
-Clayton County looks structurally different from the other four — lower median incomes, higher rent burden, and more gentrification‑pressure flags per capita. This isn’t a data glitch; it reflects real differences in housing conditions that the DRI is meant to surface.
+| County   | Avg DRI | Critical Tracts | Avg Rent Burden |
+|----------|---------|-----------------|-----------------|
+| Clayton  | 0.630   | 31              | 29.7%           |
+| Gwinnett | 0.584   | 65              | 25.3%           |
+| DeKalb   | 0.568   | 56              | 27.6%           |
+| Fulton   | 0.546   | 59              | 23.8%           |
+| Cobb     | 0.520   | 6               | 20.3%           |
 
-Fulton County shows the widest within‑county variation — high‑income Buckhead tracts and low‑income southwest Atlanta tracts both sit inside the same county boundary. That’s exactly why this analysis stays at tract level instead of county level.
+
+Clayton County has the highest average DRI (0.630) and highest rent burden (29.7%) —
+lower median incomes and more gentrification-pressure flags per capita than any other county.
+
+Cobb County is the clear outlier on the low end — only 6 critical tracts versus
+31–65 in every other county, and the lowest avg rent burden at 20.3%.
 
 ---
 
