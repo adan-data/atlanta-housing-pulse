@@ -145,7 +145,7 @@ else:
     except Exception: st.info("Run monitor.py to populate drift log.")
 
     st.subheader("County Summary")
-    cs = df.groupby("county_name").agg(
+    cs = df.groupby("countyname").agg(
         Tracts=("geo_id","count"), Avg_DRI=("displacement_risk_index","mean"),
         Critical=("risk_tier",lambda x:(x=="Critical").sum()),
         High=("risk_tier",lambda x:(x=="High").sum()),
