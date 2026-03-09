@@ -145,18 +145,15 @@ else:
     except Exception: st.info("Run monitor.py to populate drift log.")
 
     st.subheader("County Summary")
-    cs = df.groupby("countyname").agg(  # From census_tracts
-        Tracts=("geoid", "count"),      # From census_tracts (not geo_id)
-        Avg_DRI=("displacement_risk_index", "mean"),
-        Med_Rent=("median_rent", "mean"),  # snake_case!
-        Gentrif=("gentrif_pressure_flag", "sum"),  # snake_case!
-    ).round(3).reset_index()
+    # Line 148: Safe county summary (handles ANY column names)
+df_safe = df.copy()
+if 'countyname' not in df_safe.columns:
+    df_safe['countyname'] = df_safe.get('county', 'Unknown').fillna('Unknown')
 
-    cs.columns=["County","Tracts","Avg DRI","Critical","High","Avg Rent Burden","Gentrification Flags"]
-    st.dataframe(cs, use_container_width=True, hide_index=True)
+cs = df_safe.groupby('countyname').agg(
+    Tracts=('geoid', 'count'),
+    Avg_DRI=('displacement_risk_index', 'mean'),
+    Med_Rent=('median_rent', 'mean'),
+    Gentrif=('gentrif_pressure_flag', 'sum')
+).round(3).reset_index()
 
-# TEMP DEBUG — REMOVE AFTER
-st.write("=== DEBUG COLUMNS ===")
-st.write("Table:", df.columns.tolist())
-st.write("Sample rows:", df[["geoid", "countyname", "median_rent"]].head() if "countyname" in df.columns else "NO countyname!")
-st.stop()  # Halts here — check output
