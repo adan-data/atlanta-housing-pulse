@@ -187,23 +187,32 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
             cpi_latest, acs_anchor, df["y"].min(), df["y"].max()
         )
 
-    m = Prophet(
-        changepoint_prior_scale=0.3,
-        seasonality_mode="multiplicative",
-        interval_width=0.90,
-        yearly_seasonality=True,
-        weekly_seasonality=False,
-        daily_seasonality=False,
-    )
-    m.fit(df)
+        # FIXED S-CURVE FORECAST (Mar 2026)
+        # -------------------------------
+        # Default Prophet → logistic growth (S-shape saturation)
+        # Atlanta rents: linear 3-5% annual growth, no 18mo ceiling
+        # Linear preserves FRED CPI trend w/o artificial flattening
+        #
+        m = Prophet(
+            growth='linear',
+            changepoint_prior_scale=0.05,
+            seasonality_mode="multiplicative",
+            interval_width=0.80,
+            yearly_seasonality=5,
+            weekly_seasonality=False,
+            daily_seasonality=False,
+        )
+        m.fit(df)
 
-    future   = m.make_future_dataframe(periods=periods, freq="MS")
-    forecast = m.predict(future)
+        future = m.make_future_dataframe(periods=periods, freq="MS")
+        forecast = m.predict(future)
 
-    out = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(periods).copy()
-    out.columns = ["date", "forecast", "lower_90", "upper_90"]
-    out["date"] = out["date"].dt.strftime("%Y-%m-%d")
-    return out, m
+        out = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(periods).copy()
+        out.columns = ["date", "forecast", "lower_90", "upper_90"]
+        out["date"] = out["date"].dt.strftime("%Y-%m-%d")
+        return out, m
+
+
 
 
 # ---------------------------------------------------------------------------
