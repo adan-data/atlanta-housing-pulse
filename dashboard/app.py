@@ -153,6 +153,16 @@ else:
     df_safe['displacement_risk_index'] = df_safe.get('displacement_risk_index', 0).fillna(0)
     df_safe['median_rent'] = df_safe.get('median_rent', 0).fillna(0)
 
+# FIPS → COUNTY NAMES (063=Clayton etc)
+def get_county(geoid):
+    fips = str(geoid)[-3:]
+    return {
+        '063': 'Clayton', '067': 'Cobb', '089': 'DeKalb', 
+        '121': 'Fulton', '135': 'Gwinnett'
+    }.get(fips, f'FIPS_{fips}')
+
+df_safe['countyname'] = df_safe['geoid'].apply(get_county)
+
 cs = df_safe.groupby('countyname').agg(
     Tracts=('geoid', 'count'),
     Avg_DRI=('displacement_risk_index', 'mean'),
