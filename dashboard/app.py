@@ -147,27 +147,27 @@ else:
     st.subheader("County Summary")
     # Line 148: Safe county summary (handles ANY column names)
     df_safe = df.copy()
-    df_safe['countyname'] = df_safe.get('countyname', df_safe.get('county', 'Unknown')).fillna('Unknown')
     df_safe['geoid'] = df_safe.get('geoid', df_safe.get('geo_id', 0)).astype(str)
     df_safe['gentrif_pressure_flag'] = df_safe.get('gentrif_pressure_flag', 0).fillna(0)
     df_safe['displacement_risk_index'] = df_safe.get('displacement_risk_index', 0).fillna(0)
     df_safe['median_rent'] = df_safe.get('median_rent', 0).fillna(0)
 
-# FIPS → COUNTY NAMES (063=Clayton etc)
-def get_county(geoid):
-    fips = str(geoid)[-3:]
-    return {
-        '063': 'Clayton', '067': 'Cobb', '089': 'DeKalb', 
-        '121': 'Fulton', '135': 'Gwinnett'
-    }.get(fips, f'FIPS_{fips}')
+    # FIPS → COUNTY NAMES (extracts chars 2-4 from full GEOID "13121000100")
+    def get_county(geoid):
+        g = str(geoid)
+        fips = g[2:5] if len(g) >= 5 else g
+        return {
+            '063': 'Clayton', '067': 'Cobb', '089': 'DeKalb',
+            '121': 'Fulton',  '135': 'Gwinnett'
+        }.get(fips, f'FIPS_{fips}')
 
-df_safe['countyname'] = df_safe['geoid'].apply(get_county)
+    df_safe['countyname'] = df_safe['geoid'].apply(get_county)
 
-cs = df_safe.groupby('countyname').agg(
-    Tracts=('geoid', 'count'),
-    Avg_DRI=('displacement_risk_index', 'mean'),
-    Med_Rent=('median_rent', 'mean'),
-    Gentrif=('gentrif_pressure_flag', 'sum')
-).round(3).reset_index()
+    cs = df_safe.groupby('countyname').agg(
+        Tracts=('geoid', 'count'),
+        Avg_DRI=('displacement_risk_index', 'mean'),
+        Med_Rent=('median_rent', 'mean'),
+        Gentrif=('gentrif_pressure_flag', 'sum')
+    ).round(3).reset_index()
 
-st.dataframe(cs, use_container_width=True)
+    st.dataframe(cs, use_container_width=True)
