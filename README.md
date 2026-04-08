@@ -2,6 +2,12 @@
 
 Atlanta Housing Pulse is an end-to-end housing analytics project for the 5-county Atlanta core: **Fulton, DeKalb, Gwinnett, Cobb, and Clayton**. It combines ACS and FRED data to measure **displacement risk at the census-tract level**, flag **gentrification pressure**, evaluate a **risk classification model**, monitor **data drift**, and produce an **18-month rent forecast**.
 
+## Live demo
+
+- **Streamlit dashboard:** [atlanta-housing-pulse.streamlit.app](https://atlanta-housing-pulse.streamlit.app/)
+- **Executive Summary Notebook:** `notebooks/01_Executive_Summary.ipynb`
+- **Model Evaluation Notebook:** `notebooks/04_Model_Evaluation.ipynb`
+
 This project is designed for both:
 - **Non-technical stakeholders** — policy teams, nonprofits, city leadership, recruiters.
 - **Technical reviewers** — data scientists, ML engineers, analytics leads.
@@ -67,7 +73,7 @@ atlanta-housing-pulse/
 │   ├── 03_Feature_Engineering.ipynb
 │   ├── 04_Model_Evaluation.ipynb
 │   ├── 05_Forecast_Analysis.ipynb
-│   └── 01_exec_affordability.jpg
+│   └── 01_exec_affordability.png
 ├── src/
 │   ├── __init__.py
 │   ├── data_pipeline.py
@@ -263,13 +269,15 @@ This project highlights the real affordability pressure across the Atlanta core 
 
 ### Median rent by county
 
-![Median rent by county](./notebooks/01_exec_affordability.jpg)
+![Executive summary chart](./notebooks/01_exec_affordability.png)
 
-The chart shows that Gwinnett has the highest median rent at $1,714, followed by Cobb at $1,652, Fulton at $1,645, DeKalb at $1,435, and Clayton at $1,198.
+The combined figure shows both county median rent and affordability stress in one view. Gwinnett has the highest median rent at $1,714, followed by Cobb at $1,652, Fulton at $1,645, DeKalb at $1,435, and Clayton at $1,198. That rent ordering matters because higher median rent is more concerning when it lines up with higher rent-to-income pressure and severe burden, which is exactly where displacement risk becomes more acute.
+
+The scatter plot shows that many tracts fall near or above the 30% affordability threshold, with higher displacement risk generally appearing where rent-to-income pressure and severe burden rise together. Taken together, the chart shows that affordability pressure is uneven, county-specific, and tightly connected to tract-level vulnerability.
 
 ### Affordability stress
 
-![Affordability stress — RTI vs. severe burden](./notebooks/01_exec_affordability.jpg)
+![Affordability stress — RTI vs. severe burden](./notebooks/01_exec_affordability.png)
 
 The scatter plot shows that many tracts fall near or above the 30% affordability threshold, with higher displacement risk generally appearing where rent-to-income pressure and severe burden rise together.
 
