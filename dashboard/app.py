@@ -3,7 +3,6 @@ dashboard/app.py
 Two-mode Streamlit dashboard.
   Community Overview  — for planners, nonprofits, advocates. No jargon.
   Technical Analysis  — for data reviewers and model auditors.
-Auto-seeds demo DB on first run if housing_pulse.db is absent.
 """
 import os, sys, sqlite3
 from datetime import datetime
@@ -11,25 +10,31 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 
-ROOT    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# FIX: Set ROOT to the parent directory (atlanta-housing-pulse)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT        = os.path.dirname(CURRENT_DIR) 
+
 sys.path.insert(0, os.path.join(ROOT, "src"))
 DB_PATH = os.path.join(ROOT, "housing_pulse.db")
 COLORS  = {"Low":"#2ecc71","Moderate":"#f39c12","High":"#e74c3c","Critical":"#8e44ad"}
 
-
 st.set_page_config(page_title="Atlanta Housing Pulse", page_icon=":building_construction:", layout="wide")
 
-
-@st.cache_resource
 def ensure_db():
     if not os.path.exists(DB_PATH):
-        from demo_data import seed_demo_db
-        seed_demo_db(DB_PATH)
+        try:
+            from demo_data import seed_demo_db
+            seed_demo_db(DB_PATH)
+            st.warning(f"⚠️ Demo DB seeded — real DB not found at: `{DB_PATH}`")
+        except ImportError:
+            st.error(f"❌ Could not find database at `{DB_PATH}` and could not find `demo_data.py` to generate one.")
     return True
 ensure_db()
-
 
 @st.cache_data(ttl=3600)
 def load(table, query=None):
@@ -37,7 +42,6 @@ def load(table, query=None):
     df = pd.read_sql(query or f"SELECT * FROM {table}", conn)
     conn.close()
     return df
-
 
 def recommendation(row):
     if row["risk_tier"] == "Critical":
@@ -49,26 +53,37 @@ def recommendation(row):
         return "Monitoring advised — flag for quarterly review."
     return "Stable. Continue standard monitoring."
 
-
 st.title("Atlanta Housing Pulse")
+
+# This will now correctly read your .env file
 demo = not bool(os.getenv("CENSUS_API_KEY", ""))
 if demo:
     st.info("**Demo mode** — synthetic Atlanta data calibrated to 2022 ACS public summaries. "
             "Add Census + FRED API keys to load live data.", icon="ℹ️")
 st.caption(f"U.S. Census ACS 5-Year · HUD FMR · FRED | {'Demo · ' if demo else ''}Updated {datetime.now().strftime('%B %Y')}")
 
+# LOAD DATA
+df_all = load("tracts_with_features")
 
-df   = load("tracts_with_features")
+# FIX: Filter data to only show the most recent year to prevent triple-counting
+if "data_year" in df_all.columns:
+    latest_year = df_all["data_year"].max()
+    df = df_all[df_all["data_year"] == latest_year].copy()
+    st.caption(f"Showing tract data for: {latest_year}")
+else:
+    df = df_all.copy()
+
 view = st.radio("Select view", ["Community Overview", "Technical Analysis"], horizontal=True)
 st.divider()
-
 
 if view == "Community Overview":
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Critical Tracts",     int((df["risk_tier"] == "Critical").sum()))
     c2.metric("High Risk Tracts",    int((df["risk_tier"] == "High").sum()))
     c3.metric("Avg Rent Burden",     f"{df['rent_burden_pct'].mean():.1%}")
-    c4.metric("Gentrification Flags", int(df["gentrif_pressure_flag"].fillna(0).sum()))
+    
+    gentrif_count = int(df["gentrif_pressure_flag"].fillna(0).sum()) if "gentrif_pressure_flag" in df.columns else 0
+    c4.metric("Gentrification Flags", gentrif_count)
 
     st.subheader("Income vs. Rent by Tract")
     st.caption("Bubble = renter household count. Lower-right (high rent, low income) = highest-priority targets.")
@@ -111,8 +126,7 @@ if view == "Community Overview":
             st.plotly_chart(fig3, use_container_width=True)
             st.caption("3-month forecasts are actionable. 6+ months is directional only — CI widens substantially.")
     except Exception as e:
-        st.info(f"Forecast unavailable — run model.py to generate. ({e})")  # FIX: was silent pass
-
+        st.info(f"Forecast unavailable — run model.py to generate. ({e})")
 
 else:
     c1, c2 = st.columns(2)
@@ -125,7 +139,8 @@ else:
     with c2:
         corr_cols = ["rent_burden_pct", "rent_to_income_ratio", "vacancy_rate",
                      "median_income", "median_rent", "displacement_risk_index"]
-        fig_c = px.imshow(df[corr_cols].corr(), text_auto=".2f",
+        available_corr_cols = [c for c in corr_cols if c in df.columns]
+        fig_c = px.imshow(df[available_corr_cols].corr(), text_auto=".2f",
             color_continuous_scale="RdBu_r", zmin=-1, zmax=1, title="Feature Correlations")
         st.plotly_chart(fig_c, use_container_width=True)
 
@@ -163,11 +178,20 @@ else:
         st.info("Run monitor.py to populate drift log.")
 
     st.subheader("County Summary")
-    # FIX: removed redundant FIPS re-derivation — county_name already exists in DB from data_pipeline.py
-    cs = df.groupby("county_name").agg(
-        Tracts  =("geo_id",                "count"),
-        Avg_DRI =("displacement_risk_index","mean"),
-        Med_Rent=("median_rent",            "mean"),
-        Gentrif =("gentrif_pressure_flag",  "sum"),
-    ).round(3).reset_index()
+    
+    # Safely aggregate without throwing a KeyError if geo_id is missing
+    agg_funcs = {
+        "Avg_DRI": ("displacement_risk_index", "mean"),
+        "Med_Rent": ("median_rent", "mean")
+    }
+    
+    if "gentrif_pressure_flag" in df.columns:
+        agg_funcs["Gentrif"] = ("gentrif_pressure_flag", "sum")
+        
+    cs = df.groupby("county_name").agg(**agg_funcs)
+    
+    # Calculate tract size dynamically using row count instead of geo_id
+    cs.insert(0, "Tracts", df.groupby("county_name").size())
+    
+    cs = cs.round(3).reset_index()
     st.dataframe(cs, use_container_width=True)

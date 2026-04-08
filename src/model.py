@@ -140,9 +140,9 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
     df   = pd.DataFrame()
 
     candidates = [
-        ("fred_rent_cpi_atlanta",    "rent_cpi_atlanta"),
-        ("fred_unemployment_atlanta", "unemployment_atlanta"),
-    ]
+    ("fred_cpi_housing_southeast", "cpi_housing_southeast"),
+    ("fred_unemployment_rate_atlanta", "unemployment_rate_atlanta"),
+] 
 
     for table, col in candidates:
         try:
@@ -186,7 +186,7 @@ def build_rent_forecast(db_path=DB_PATH, periods=18):
 
     m = Prophet(
         growth="linear",
-        changepoint_prior_scale=0.3,
+        changepoint_prior_scale=0.05,  # CHANGED from 0.3
         seasonality_mode="multiplicative",
         interval_width=0.80,
         yearly_seasonality=5,

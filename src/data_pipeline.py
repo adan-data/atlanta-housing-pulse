@@ -4,14 +4,18 @@ import sqlite3
 import time
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-CENSUS_API_KEY = "YOUR_CENSUS_API_KEY"
-FRED_API_KEY   = "YOUR_FRED_API_KEY"
+CENSUS_API_KEY = os.getenv("CENSUS_API_KEY")
+FRED_API_KEY = os.getenv("FRED_API_KEY")
 
 ATLANTA_COUNTIES = {
     "Fulton":   "121",
@@ -22,7 +26,6 @@ ATLANTA_COUNTIES = {
 }
 
 STATE_FIPS = "13"
-
 
 def get_census_data(year=2022):
     variables = [
@@ -47,12 +50,12 @@ def get_census_data(year=2022):
             df   = pd.DataFrame(data[1:], columns=data[0])
             df["county_name"] = county_name
             all_data.append(df)
-            logging.info(f"Pulled {len(data)-1} tracts for {county_name} County")
+            logging.info(f"Pulled {len(data)-1} tracts for {county_name} County (Year: {year})")
             time.sleep(0.5)
         except Exception as e:
-            logging.error(f"Failed on {county_name}: {e}")
+            logging.error(f"Failed on {county_name} for year {year}: {e}")
     if not all_data:
-        raise ValueError("No census data retrieved.")
+        raise ValueError(f"No census data retrieved for year {year}.")
     return pd.concat(all_data, ignore_index=True)
 
 
@@ -118,15 +121,32 @@ def get_fred_data():
 
 def save_to_db(df, table_name, db_path="housing_pulse.db"):
     conn = sqlite3.connect(db_path)
+    # Changed from hardcoded 'replace' to allow passing if_exists behavior from main
     df.to_sql(table_name, conn, if_exists="replace", index=False)
     conn.close()
     logging.info(f"Saved {len(df)} rows to '{table_name}'")
 
 
 if __name__ == "__main__":
-    raw   = get_census_data(year=2022)
-    clean = clean_census_data(raw, year=2022)
-    save_to_db(clean, "census_tracts")
-    fred  = get_fred_data()
+    if not CENSUS_API_KEY or not FRED_API_KEY:
+        logging.error("Missing API keys. Please check your .env file.")
+        exit(1)
+        
+    # Get multi-year census data (2022, 2023, 2024)
+    for year in [2022, 2023, 2024]:
+        try:
+            raw = get_census_data(year=year)
+            clean = clean_census_data(raw, year=year)
+            # Use append to stack years instead of replacing
+            if_exists_behavior = "replace" if year == 2022 else "append"
+            
+            conn = sqlite3.connect("housing_pulse.db")
+            clean.to_sql("census_tracts", conn, if_exists=if_exists_behavior, index=False)
+            conn.close()
+            logging.info(f"Saved {len(clean)} rows for year {year}")
+        except Exception as e:
+            logging.error(f"Failed processing year {year}: {e}")
+            
+    fred = get_fred_data()
     for label, df in fred.items():
         save_to_db(df, f"fred_{label}")

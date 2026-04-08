@@ -20,6 +20,9 @@ The PSI-based drift monitoring in `src/monitor.py` directly implements the model
 
 The practical implication: a data scientist moving from this project to a financial services model validation role would encounter the same conceptual framework, just applied to income verification models or fraud detection systems rather than housing displacement.
 
+### Out-of-Time (OOT) Temporal Validation
+Initially built on a single cross-section of data, the pipeline now supports true **Out-of-Time (OOT) validation** by stacking 2022, 2023, and 2024 ACS data. The PSI drift monitor evaluates temporal distribution shifts (e.g., 2023 vs 2024) rather than synthetic within-sample splits. This mirrors the strict OOT testing requirements banks use to ensure models remain robust across changing macroeconomic conditions.
+
 ## Additive scorecard structure
 
 The DRI is a linear weighted scorecard — the same architecture used in FICO score construction and most regulatory-compliant retail credit models. Linear scorecards are preferred in regulated environments not because they are the most accurate model type (they often aren't), but because they are interpretable, auditable, and defensible to regulators. A GBM or neural network with higher predictive accuracy would be harder to explain to a fair lending examiner or a city council member.
